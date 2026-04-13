@@ -21,20 +21,30 @@ services:
         value: /opt/render/project/src/data/history
       - key: DATABASE_DIR
         value: /opt/render/project/src/data
-      # ── Model providers (set at least one) ────────────────────────────────
-      # Option A: Local Ollama (recommended, free, uncensored)
+
+      # ── LLM — Elige UNO (Ollama es gratis e ilimitado) ────────────────────
+      #
+      # OPCIÓN A — Ollama propio (recomendado: gratis, local, sin censura)
+      #   ollama pull dolphin3:8b  /  llama3  /  mistral  /  deepseek-r1
       - key: OLLAMA_HOST
-        sync: false
+        sync: false            # ej: http://tu-servidor:11434
       - key: OLLAMA_MODEL
-        value: dolphin3:8b
-      # Option B: OpenAI-compatible API (e.g., ofox.ai, together.ai, groq...)
+        value: dolphin3:8b    # cualquier modelo de tu instancia Ollama
+      #
+      # OPCIÓN B — Cualquier API OpenAI-compatible (muchas tienen capa gratis)
+      #   Groq: https://api.groq.com/openai/v1  (gratis, rápido)
+      #   Together: https://api.together.xyz/v1  (gratis básico)
+      #   LocalAI: http://tu-servidor:8080       (auto-hosted, sin límites)
+      #   LM Studio: http://localhost:1234/v1    (auto-hosted, sin límites)
       - key: OPENAI_API_KEY
         sync: false
       - key: OPENAI_BASE_URL
         sync: false
-      # Option C: Anthropic
+      #
+      # OPCIÓN C — Anthropic (requiere cuenta de pago)
       - key: ANTHROPIC_API_KEY
         sync: false
+
       - key: SESSION_SECRET
         generateValue: true
 
@@ -55,4 +65,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_URL
-        sync: false
+        sync: false  # URL de unsens-api en Render, ej: https://unsens-api.onrender.com

@@ -16,7 +16,8 @@ interface MessagePart { type: "text" | "tool"; content?: string; tool?: ToolCall
 interface Message { role: "user" | "assistant"; parts: MessagePart[]; streaming?: boolean; }
 interface FileNode { name: string; type: "file" | "dir"; path?: string; children?: FileNode[]; }
 interface Session { id: string; title: string; updatedAt: number; messageCount: number; }
-interface ModelInfo { name: string; size: number; }
+interface ModelInfo { name: string; size?: number; }
+interface ProviderInfo { provider: string; label: string; free: boolean; models: string[]; }
 
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 function fmt(b: number) { return b < 1e9 ? (b / 1e6).toFixed(0) + " MB" : (b / 1e9).toFixed(1) + " GB"; }
@@ -216,7 +217,8 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [models, setModels] = useState<ModelInfo[]>([]);
+  const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState("ollama");
   const [selectedModel, setSelectedModel] = useState("dolphin3:8b");
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [ollamaReady, setOllamaReady] = useState(false);
@@ -236,15 +238,24 @@ export default function Chat() {
 
   useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages]);
 
-  // Load models
+  // Load models/providers
   const fetchModels = useCallback(async () => {
     try {
       const r = await fetch(`${BASE}/api/models`);
       if (r.ok) {
-        const d = await r.json() as { models?: ModelInfo[] };
-        const list = d.models || [];
-        setModels(list);
-        if (list.length > 0) { if (!ollamaReady) setSelectedModel(list[0].name); setOllamaReady(true); }
+        const d = await r.json() as { providers?: ProviderInfo[] };
+        const list = d.providers || [];
+        setProviders(list);
+        const ollamaProv = list.find(p => p.provider === "ollama");
+        if (ollamaProv && ollamaProv.models.length > 0) {
+          if (!ollamaReady) setSelectedModel(ollamaProv.models[0]);
+          setOllamaReady(true);
+          setSelectedProvider("ollama");
+        } else if (list.length > 0 && list[0].models.length > 0) {
+          if (!ollamaReady) setSelectedModel(list[0].models[0]);
+          setSelectedProvider(list[0].provider);
+          setOllamaReady(true);
+        }
       }
     } catch {}
   }, [ollamaReady]);
@@ -379,7 +390,7 @@ export default function Chat() {
       const resp = await fetch(`${BASE}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: flatHistory, model: selectedModel }),
+        body: JSON.stringify({ messages: flatHistory, model: selectedModel, provider: selectedProvider }),
         signal: abortRef.current.signal,
       });
 
@@ -622,20 +633,36 @@ export default function Chat() {
               <button onClick={() => setShowModelPicker(!showModelPicker)}
                 className="flex items-center gap-1 px-2 py-1 rounded-lg bg-[hsl(220_14%_14%)] border border-[hsl(220_14%_20%)] text-xs text-[hsl(210_20%_80%)] hover:bg-[hsl(220_14%_18%)] transition-colors">
                 <span className={`w-1.5 h-1.5 rounded-full ${ollamaReady ? "bg-green-400" : "bg-yellow-400 animate-pulse"}`} />
-                <span className="max-w-[80px] truncate">{selectedModel}</span>
+                <span className="max-w-[90px] truncate">{selectedModel}</span>
                 <ChevronDown size={10} />
               </button>
               {showModelPicker && (
-                <div className="absolute right-0 top-full mt-1 w-52 bg-[hsl(222_20%_12%)] border border-[hsl(220_14%_22%)] rounded-xl shadow-2xl z-50 overflow-hidden">
-                  {models.length === 0
-                    ? <div className="px-3 py-3 text-xs text-[hsl(215_14%_50%)]">Sin modelos</div>
-                    : models.map(m => (
-                      <button key={m.name} onClick={() => { setSelectedModel(m.name); setShowModelPicker(false); }}
-                        className={`w-full text-left px-3 py-2 text-xs hover:bg-[hsl(220_14%_18%)] transition-colors ${selectedModel === m.name ? "text-purple-400" : "text-[hsl(210_20%_85%)]"}`}>
-                        <div>{m.name}</div>
-                        <div className="text-[hsl(215_14%_42%)]">{fmt(m.size)}</div>
-                      </button>
+                <div className="absolute right-0 top-full mt-1 w-64 bg-[hsl(222_20%_12%)] border border-[hsl(220_14%_22%)] rounded-xl shadow-2xl z-50 overflow-hidden">
+                  {providers.length === 0
+                    ? <div className="px-3 py-3 text-xs text-[hsl(215_14%_50%)]">Sin modelos disponibles</div>
+                    : providers.map(prov => (
+                      <div key={prov.provider}>
+                        <div className="flex items-center justify-between px-3 py-1.5 bg-[hsl(220_14%_9%)] border-b border-[hsl(220_14%_18%)]">
+                          <span className="text-[10px] font-semibold text-[hsl(215_14%_55%)] uppercase tracking-wide">{prov.label}</span>
+                          {prov.free
+                            ? <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-500/15 border border-green-500/25 text-green-400">LIBRE</span>
+                            : <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-500/15 border border-orange-500/25 text-orange-400">API KEY</span>
+                          }
+                        </div>
+                        {prov.models.length === 0
+                          ? <div className="px-3 py-2 text-[11px] text-[hsl(215_14%_40%)] italic">Sin modelos cargados</div>
+                          : prov.models.map(m => (
+                            <button key={m} onClick={() => { setSelectedModel(m); setSelectedProvider(prov.provider); setShowModelPicker(false); }}
+                              className={`w-full text-left px-3 py-2 text-xs hover:bg-[hsl(220_14%_18%)] transition-colors ${selectedModel === m && selectedProvider === prov.provider ? "text-purple-400 bg-[hsl(220_14%_16%)]" : "text-[hsl(210_20%_85%)]"}`}>
+                              {m}
+                            </button>
+                          ))
+                        }
+                      </div>
                     ))}
+                  <div className="px-3 py-2 border-t border-[hsl(220_14%_18%)] bg-[hsl(220_14%_9%)]">
+                    <p className="text-[10px] text-[hsl(215_14%_38%)]">Ollama: modelos locales sin límites ni costos</p>
+                  </div>
                 </div>
               )}
             </div>

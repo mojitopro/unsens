@@ -2,76 +2,105 @@
 
 ## Overview
 
-UNSENS es un agente de IA autónomo con herramientas de programación completas. Puede leer/escribir archivos, ejecutar código, buscar en internet y crear infraestructura compleja. Compatible con múltiples proveedores de LLM (Ollama, OpenAI, Anthropic).
+Agente de IA autónomo para programación. Lee/escribe archivos, ejecuta bash, busca en internet sin APIs de pago, crea proyectos completos. 100% libre y sin límites con Ollama.
 
 ## Stack
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: SQLite + libsql + Drizzle ORM
+- **Monorepo**: pnpm workspaces
+- **Node.js**: 24
+- **API**: Express 5 + tsx
+- **DB**: SQLite + libsql (sin PostgreSQL, sin configuración)
 - **Frontend**: React + Vite + TailwindCSS
-- **AI**: Ollama (local, uncensored) / OpenAI-compatible / Anthropic
+- **LLM**: Ollama (local, gratis, sin límites) / OpenAI-compatible / Anthropic
 
-## Services
+## Servicios
 
-- **api-server** (`/api`): Backend con todas las rutas del agente
-- **ai-chat** (`/`): Interfaz de chat estilo terminal oscuro
+- `api-server` — Backend Express en puerto 8080
+- `ai-chat` — Frontend React en puerto 25374
 
-## API Routes
+## Rutas API
 
-- `POST /api/chat` — Chat con el agente (SSE streaming, tool calling)
-- `GET /api/models` — Listar modelos disponibles en Ollama
-- `POST /api/exec` — Ejecutar código/comandos bash
-- `GET /api/search?q=` — Búsqueda web via Jina AI (gratis)
-- `GET /api/fetch-url?url=` — Leer URLs como texto/markdown
-- `GET/POST/DELETE /api/history/:id` — Historial de sesiones (JSON files)
-- `GET /api/project/tree` — Árbol de archivos del workspace
-- `GET /api/files` — Listar archivos del workspace
-- `POST /api/files` — Escribir archivos al workspace
-- `GET /api/healthz` — Health check
+| Ruta | Descripción |
+|------|-------------|
+| `POST /api/chat` | Agente con SSE streaming y tool calling |
+| `GET /api/models` | Listar proveedores y modelos disponibles |
+| `GET /api/search?q=` | Búsqueda web (SearXNG + DuckDuckGo, sin API key) |
+| `GET /api/fetch-url?url=` | Leer URL directo (sin servicio externo) |
+| `POST /api/exec` | Ejecutar comandos bash |
+| `GET/POST/DELETE /api/history/:id` | Historial de sesiones |
+| `GET /api/project/tree` | Árbol de archivos del workspace |
+| `GET /api/healthz` | Health check |
 
-## Agent Tools
+## Herramientas del Agente
 
-- `read_file` — Leer archivos del workspace
-- `write_file` — Crear/modificar archivos
+Todas libres y sin límites:
+- `read_file` / `write_file` — Leer/escribir archivos en el workspace
 - `list_dir` — Explorar directorios
-- `bash` — Ejecutar cualquier comando shell
-- `search_files` — Buscar en código/archivos
-- `web_search` — Buscar en internet (Jina AI, gratis)
-- `fetch_url` — Leer documentación y URLs
+- `bash` — Cualquier comando shell (git, npm, pip, curl...)
+- `search_files` — Buscar en código con grep/find
+- `web_search` — **SearXNG + DuckDuckGo** (sin API key, sin límites, sin costos)
+- `fetch_url` — **Fetch directo** a cualquier URL (sin servicio externo)
 
-## Key Commands
+## Búsqueda Web — Implementación Libre
 
-- `pnpm --filter @workspace/api-server run dev` — Iniciar API server
-- `pnpm --filter @workspace/ai-chat run dev` — Iniciar frontend
-- `pnpm install --no-frozen-lockfile` — Instalar dependencias
+`web_search` usa en orden de preferencia:
+1. **SearXNG** — motor de búsqueda open source, instancias públicas gratuitas, API JSON, sin clave
+2. **DuckDuckGo Lite HTML** — scraper del HTML de DDG, sin clave, sin límites
+3. Sin fallback externo — completamente autónomo
 
-## Deployment (Render)
+`fetch_url` hace fetch directo HTTP con User-Agent de Firefox — sin Jina, sin ningún proxy externo.
 
-Ver `render.yaml` en la raíz. Configura dos servicios:
-1. `unsens-api` — Web service Node.js
-2. `unsens-chat` — Static site React
+## Proveedores LLM
 
-Variables de entorno requeridas en Render:
-- `OLLAMA_HOST` — URL del servidor Ollama (ej: `https://your-ollama.com`)
-- O `OPENAI_API_KEY` + `OPENAI_BASE_URL` para API compatible
-- O `ANTHROPIC_API_KEY` para Claude
+### Recomendado: Ollama (100% libre, sin límites)
+```bash
+ollama pull dolphin3:8b   # sin censura, para dev
+ollama pull llama3.2      # general purpose
+ollama pull deepseek-r1   # razonamiento
+ollama pull mistral       # rápido y eficiente
+ollama pull codestral     # especializado en código
+```
 
-## LLM Providers (gratis, sin censura)
+### Alternativas OpenAI-compatible (auto-hosted = sin límites)
+```bash
+# LocalAI (auto-hosted, sin límites)
+OPENAI_BASE_URL=http://tu-servidor:8080
+OPENAI_API_KEY=none
+
+# LM Studio (escritorio, sin límites)
+OPENAI_BASE_URL=http://localhost:1234/v1
+OPENAI_API_KEY=lm-studio
+
+# vLLM (servidor GPU, sin límites)
+OPENAI_BASE_URL=http://tu-gpu-server:8000/v1
+OPENAI_API_KEY=none
+```
+
+### APIs con capa gratuita (tienen límites mensuales)
+```bash
+# Groq (rápido, ~14,400 req/día gratis)
+OPENAI_BASE_URL=https://api.groq.com/openai/v1
+OPENAI_API_KEY=gsk_...
+
+# Together.ai ($1 crédito gratis)
+OPENAI_BASE_URL=https://api.together.xyz/v1
+OPENAI_API_KEY=...
+```
+
+## Despliegue en Render
+
+Ver `render.yaml` en la raíz. Solo necesitas:
+1. Subir el código a GitHub
+2. Crear un nuevo Blueprint en render.com desde el `render.yaml`
+3. Configurar `OLLAMA_HOST` (o una API compatible)
+4. Deploy — el frontend se construye automáticamente como static site
+
+No necesita PostgreSQL, no necesita Redis, no necesita ningún servicio externo de pago.
+
+## Comandos útiles
 
 ```bash
-# Option A: Ollama local (recomendado)
-export OLLAMA_HOST=http://localhost:11434
-export OLLAMA_MODEL=dolphin3:8b  # uncensored
-
-# Option B: API compatible (e.g., together.ai gratis, groq gratis)
-export OPENAI_API_KEY=your-key
-export OPENAI_BASE_URL=https://api.together.xyz/v1
-
-# Option C: ofox.ai proxy
-export OPENAI_API_KEY=your-ofoxai-key
-export OPENAI_BASE_URL=https://api.ofox.ai/v1
+pnpm --filter @workspace/api-server run dev  # API server
+pnpm --filter @workspace/ai-chat run dev     # Frontend
+pnpm install --no-frozen-lockfile             # Instalar deps
 ```
