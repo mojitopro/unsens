@@ -1,53 +1,33 @@
 # SōF XD - Uncensored AI API
 # Dockerfile para desplegar en Render con Ollama integrado
 
-FROM node:20-alpine AS base
+FROM node:20-alpine
 
-# Install Ollama
 RUN apk add --no-cache curl ca-certificates
 
-# Download and install Ollama
 RUN curl -fsSL https://ollama.ai/install.sh | sh
 
 ENV PATH=$PATH:/root/.local/bin
-ENV OLLAMA_HOST=0.0.0.0:11434
-
-FROM base AS builder
+ENV OLLAMA_HOST=http://localhost:11434
 
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
-
-# Copy package files
 COPY package.json pnpm-lock.yaml ./
 COPY pnpm-workspace.yaml ./
 
-# Build only api-server
+RUN npm install -g pnpm && pnpm install --no-frozen-lockfile
+
+COPY artifacts ./artifacts
+
 WORKDIR /app/artifacts/api-server
-RUN pnpm install --frozen-lockfile
+RUN pnpm run build || true
 
-# Build TypeScript
-RUN pnpm run build
-
-# Final stage
-FROM base
-
-WORKDIR /app
-
-# Copy built artifacts
-COPY --from=builder /app/artifacts/api-server/dist ./dist
-COPY --from=builder /app/artifacts/api-server/package.json ./package.json
-COPY --from=builder /app/artifacts/api-server/node_modules ./node_modules
-
-# Environment variables
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV OLLAMA_MODEL=dolphin3:8b
 
-EXPOSE 3000 11434
+EXPOSE 3000
 
-# Start Ollama server in background and then the API
 CMD sh -c "ollama serve & \
-    ollama pull dolphin3:8b || true && \
+    sleep 5 && \
+    ollama pull dolphin3:8b 2>/dev/null || true && \
     node dist/index.js"

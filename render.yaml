@@ -1,12 +1,11 @@
 services:
-  # ── Backend API Server ──────────────────────────────────────────────────────
   - type: web
     name: unsens
     runtime: docker
     region: oregon
     plan: free
     dockerfilePath: ./Dockerfile
-    dockerCommand: sh -c "ollama serve & ollama pull dolphin3:8b || true && node dist/index.js"
+    dockerCommand: sh -c "ollama serve & sleep 10 && ollama pull dolphin3:8b 2>/dev/null || true && node dist/index.js"
     healthCheckPath: /api/healthz
     envVars:
       - key: NODE_ENV
