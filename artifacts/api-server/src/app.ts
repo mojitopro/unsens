@@ -29,19 +29,30 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Root endpoint
 app.get("/", (_req, res) => {
-  res.json({
-    message: "SōF XD API is running",
-    version: "0.0.0",
-    status: "ok",
-    documentation: "https://github.com/mojitopro/unsens",
-    endpoints: {
-      health: "/api/healthz",
-      chat: "/api/chat",
-      external: "/api/external"
-    }
-  });
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>SōF XD - UNSENS</title>
+      <style>
+        body { font-family: system-ui; background: #0a0a0a; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { text-align: center; }
+        h1 { font-size: 3rem; margin-bottom: 0.5rem; }
+        p { color: #888; }
+        .status { color: #0f0; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <h1>SōF XD</h1>
+        <p>UNSENS Engine Running</p>
+        <p class="status">● Online</p>
+        <p><a href="/api/healthz" style="color: #444;">API</a></p>
+      </div>
+    </body>
+    </html>
+  `);
 });
 
 app.use("/api", router);
