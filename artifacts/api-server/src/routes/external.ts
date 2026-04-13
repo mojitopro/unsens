@@ -2,8 +2,33 @@ import { Router } from "express";
 
 const router = Router();
 
+// API Key authentication middleware
+const MOJITO_API_KEY = process.env.MOJITO_API_KEY || "";
+
+function authenticate(req: any, res: any, next: any) {
+  if (!MOJITO_API_KEY) {
+    return next(); // No key configured, allow all
+  }
+  
+  const authHeader = req.headers.authorization;
+  const providedKey = authHeader?.replace("Bearer ", "").trim();
+  
+  if (!providedKey || providedKey !== MOJITO_API_KEY) {
+    res.status(401).json({ 
+      error: { 
+        message: "Unauthorized. Invalid or missing API key.", 
+        type: "invalid_request_error",
+        code: 401
+      }
+    });
+    return;
+  }
+  
+  next();
+}
+
 // OpenAI-compatible /v1/chat/completions endpoint
-router.post("/v1/chat/completions", async (req, res) => {
+router.post("/v1/chat/completions", authenticate, async (req, res) => {
   const { messages, model, stream } = req.body as any;
   
   // Get Ollama configuration from environment
@@ -80,7 +105,7 @@ router.post("/v1/chat/completions", async (req, res) => {
 });
 
 // Models list endpoint
-router.get("/v1/models", async (_req, res) => {
+router.get("/v1/models", authenticate, async (_req, res) => {
   res.json({
     object: "list",
     data: [
@@ -94,7 +119,7 @@ router.get("/v1/models", async (_req, res) => {
 });
 
 // Simple external chat endpoint (alternative)
-router.post("/external/chat", async (req, res) => {
+router.post("/external/chat", authenticate, async (req, res) => {
   const { message, model } = req.body as any;
   
   res.json({
