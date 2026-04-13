@@ -1,0 +1,58 @@
+services:
+  # ── Backend API Server ──────────────────────────────────────────────────────
+  - type: web
+    name: unsens-api
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: |
+      npm install -g pnpm
+      pnpm install --no-frozen-lockfile
+    startCommand: pnpm --filter @workspace/api-server run start
+    healthCheckPath: /api/healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: AGENT_WORKSPACE
+        value: /opt/render/project/src/data/workspace
+      - key: AGENT_HISTORY_DIR
+        value: /opt/render/project/src/data/history
+      - key: DATABASE_DIR
+        value: /opt/render/project/src/data
+      # ── Model providers (set at least one) ────────────────────────────────
+      # Option A: Local Ollama (recommended, free, uncensored)
+      - key: OLLAMA_HOST
+        sync: false
+      - key: OLLAMA_MODEL
+        value: dolphin3:8b
+      # Option B: OpenAI-compatible API (e.g., ofox.ai, together.ai, groq...)
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: OPENAI_BASE_URL
+        sync: false
+      # Option C: Anthropic
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+
+  # ── Frontend Chat UI ────────────────────────────────────────────────────────
+  - type: web
+    name: unsens-chat
+    runtime: static
+    region: oregon
+    plan: free
+    buildCommand: |
+      npm install -g pnpm
+      pnpm install --no-frozen-lockfile
+      NODE_ENV=production pnpm --filter @workspace/ai-chat run build
+    staticPublishPath: ./artifacts/ai-chat/dist/public
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        sync: false
