@@ -1,68 +1,20 @@
 services:
   # ── Backend API Server ──────────────────────────────────────────────────────
   - type: web
-    name: unsens-api
-    runtime: node
+    name: unsens
+    runtime: docker
     region: oregon
     plan: free
-    buildCommand: |
-      npm install -g pnpm
-      pnpm install --no-frozen-lockfile
-    startCommand: pnpm --filter @workspace/api-server run start
+    dockerfilePath: ./Dockerfile
+    dockerCommand: sh -c "ollama serve & ollama pull dolphin3:8b || true && node dist/index.js"
     healthCheckPath: /api/healthz
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
-      - key: AGENT_WORKSPACE
-        value: /opt/render/project/src/data/workspace
-      - key: AGENT_HISTORY_DIR
-        value: /opt/render/project/src/data/history
-      - key: DATABASE_DIR
-        value: /opt/render/project/src/data
-
-      # ── LLM — Elige UNO (Ollama es gratis e ilimitado) ────────────────────
-      #
-      # OPCIÓN A — Ollama propio (recomendado: gratis, local, sin censura)
-      #   ollama pull dolphin3:8b  /  llama3  /  mistral  /  deepseek-r1
-      - key: OLLAMA_HOST
-        sync: false            # ej: http://tu-servidor:11434
+        value: 3000
+      - key: MOJITO_API_KEY
+        value: mojito_secret_123
+        sync: false
       - key: OLLAMA_MODEL
-        value: dolphin3:8b    # cualquier modelo de tu instancia Ollama
-      #
-      # OPCIÓN B — Cualquier API OpenAI-compatible (muchas tienen capa gratis)
-      #   Groq: https://api.groq.com/openai/v1  (gratis, rápido)
-      #   Together: https://api.together.xyz/v1  (gratis básico)
-      #   LocalAI: http://tu-servidor:8080       (auto-hosted, sin límites)
-      #   LM Studio: http://localhost:1234/v1    (auto-hosted, sin límites)
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: OPENAI_BASE_URL
-        sync: false
-      #
-      # OPCIÓN C — Anthropic (requiere cuenta de pago)
-      - key: ANTHROPIC_API_KEY
-        sync: false
-
-      - key: SESSION_SECRET
-        generateValue: true
-
-  # ── Frontend Chat UI ────────────────────────────────────────────────────────
-  - type: web
-    name: unsens-chat
-    runtime: static
-    region: oregon
-    plan: free
-    buildCommand: |
-      npm install -g pnpm
-      pnpm install --no-frozen-lockfile
-      NODE_ENV=production pnpm --filter @workspace/ai-chat run build
-    staticPublishPath: ./artifacts/ai-chat/dist/public
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: VITE_API_URL
-        sync: false  # URL de unsens-api en Render, ej: https://unsens-api.onrender.com
+        value: dolphin3:8b
